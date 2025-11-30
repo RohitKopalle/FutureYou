@@ -63,7 +63,7 @@ function Navbar() {
     { name: 'Dashboard', href: '/dashboard' },
     { name: 'Analysis', href: '/analysis' },
     { name: 'AI Insights', href: '/admin' },
-    { name: 'Goals', href: '/goals' },
+    { name: 'Tasks', href: '/tasks' },
     ...(isAdmin ? [{ name: 'Admin', href: '/admin' }] : []),
   ];
 
