@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
-import { User, Mail, Lock, CheckCircle, TrendingUp, Users, IndianRupee, BookOpen, Sparkles, ArrowRight, ArrowLeft, Loader2, CircleDotIcon, Eye, EyeOff } from 'lucide-react';
+import { User, Mail, Lock, CheckCircle, TrendingUp, Users, IndianRupee, BookOpen, Sparkles, ArrowRight, ArrowLeft, Loader2, Eye, EyeOff } from 'lucide-react';
 import Link from 'next/link';
 
 const DOMAINS = [
@@ -15,8 +15,6 @@ const DOMAINS = [
   { id: 'hobbies', label: 'Hobbies', icon: Sparkles, description: 'Fun activities, creativity' },
 ];
 
-const RANKS = ['Beginner', 'Novice', 'Intermediate', 'Advanced', 'Expert', 'Master'];
-
 export default function RegisterPage() {
   const router = useRouter();
   const [step, setStep] = useState(1);
@@ -25,14 +23,13 @@ export default function RegisterPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
-  // Form data
+  // Form data - removed goals array
   const [formData, setFormData] = useState({
     username: '',
     email: '',
     password: '',
     confirmPassword: '',
     ratings: {},
-    goals: [],
   });
 
   const handleInputChange = (field, value) => {
@@ -44,15 +41,6 @@ export default function RegisterPage() {
     setFormData(prev => ({
       ...prev,
       ratings: { ...prev.ratings, [domainId]: rating }
-    }));
-  };
-
-  const handleGoalToggle = (domainId) => {
-    setFormData(prev => ({
-      ...prev,
-      goals: prev.goals.includes(domainId)
-        ? prev.goals.filter(id => id !== domainId)
-        : [...prev.goals, domainId]
     }));
   };
 
@@ -85,6 +73,7 @@ export default function RegisterPage() {
   };
 
   const calculateStats = () => {
+    // Logic takes scores from Step 2 (ratings)
     const totalRating = Object.values(formData.ratings).reduce((sum, rating) => sum + rating, 0);
     const points = totalRating * 10;
     const level = Math.floor(points / 100) + 1;
@@ -116,7 +105,7 @@ export default function RegisterPage() {
       // Generate unique userId
       const userId = crypto.randomUUID();
 
-      // Calculate stats
+      // Calculate stats based on Step 2 ratings
       const { points, level, rank } = calculateStats();
 
       // Insert into user_profiles table
@@ -163,11 +152,10 @@ export default function RegisterPage() {
           .from('habits')
           .insert(habitData);
 
-        if (habitError) {
-          console.error(`Habit error for ${domainId}:`, habitError);
-          // Continue with other domains even if one fails
-        }
+       
       }
+
+      // Note: Goal insertion loop removed as step 3 was removed
 
       // Redirect to dashboard on success
       router.push('/dashboard');
@@ -179,11 +167,14 @@ export default function RegisterPage() {
 
   const handleNext = () => {
     if (step === 1 && !validateStep1()) return;
-    if (step === 2 && !validateStep2()) return;
-    if (step === 3) {
+    
+    // If we are on Step 2, validate and Submit immediately
+    if (step === 2) {
+      if (!validateStep2()) return;
       handleSubmit();
       return;
     }
+    
     setStep(step + 1);
     setError('');
   };
@@ -209,16 +200,16 @@ export default function RegisterPage() {
             </span>
           </Link>
 
-          {/* Progress Indicator */}
+          {/* Progress Indicator (Now calculated for 2 steps) */}
           <div className="max-w-xs mx-auto mb-6">
             <div className="flex items-center justify-between mb-2">
-              <span className="text-xs font-semibold text-blue-600 tracking-wider uppercase">Step {step} of 3</span>
-              <span className="text-xs font-medium text-gray-500">{Math.round((step / 3) * 100)}%</span>
+              <span className="text-xs font-semibold text-blue-600 tracking-wider uppercase">Step {step} of 2</span>
+              <span className="text-xs font-medium text-gray-500">{Math.round((step / 2) * 100)}%</span>
             </div>
             <div className="h-2 bg-gray-200 rounded-full overflow-hidden">
               <div
                 className="h-full bg-gradient-to-r from-blue-500 to-indigo-600 rounded-full transition-all duration-500 ease-out"
-                style={{ width: `${(step / 3) * 100}%` }}
+                style={{ width: `${(step / 2) * 100}%` }}
               />
             </div>
           </div>
@@ -229,12 +220,10 @@ export default function RegisterPage() {
           <h1 className="text-2xl md:text-3xl font-bold text-gray-900 mb-2 text-center">
             {step === 1 && 'Create Your Account'}
             {step === 2 && 'Baseline Assessment'}
-            {step === 3 && 'Set Your Focus'}
           </h1>
           <p className="text-gray-600 text-center mb-8">
             {step === 1 && 'Get started on your journey to a better you'}
             {step === 2 && 'Rate your current satisfaction (1-5) to set your starting level'}
-            {step === 3 && 'Select the areas you want to prioritize right now'}
           </p>
 
           {/* Error Message */}
@@ -374,41 +363,6 @@ export default function RegisterPage() {
             </div>
           )}
 
-          {/* Step 3: Initial Goals */}
-          {step === 3 && (
-            <div className="space-y-3 max-h-[400px] overflow-y-auto pr-2 custom-scrollbar fade-in-animation">
-              {DOMAINS.map((domain) => {
-                const Icon = domain.icon;
-                const isSelected = formData.goals.includes(domain.id);
-                return (
-                  <button
-                    key={domain.id}
-                    type="button"
-                    onClick={() => handleGoalToggle(domain.id)}
-                    className={`w-full flex items-center justify-between p-4 border rounded-xl transition-all duration-300 group ${isSelected
-                      ? 'border-blue-500 bg-blue-50/50 shadow-md'
-                      : 'border-gray-200 hover:border-blue-300 hover:bg-gray-50'
-                      }`}
-                  >
-                    <div className="flex items-center">
-                      <div className={`p-2 rounded-lg mr-3 transition-colors ${isSelected ? 'bg-blue-100 text-blue-600' : 'bg-gray-100 text-gray-500 group-hover:text-blue-500'}`}>
-                        <Icon className="h-5 w-5" />
-                      </div>
-                      <div className="text-left">
-                        <h3 className={`font-semibold transition-colors ${isSelected ? 'text-blue-900' : 'text-gray-900'}`}>{domain.label}</h3>
-                        <p className="text-xs text-gray-500">{domain.description}</p>
-                      </div>
-                    </div>
-                    <div className={`h-6 w-6 rounded-full border-2 flex items-center justify-center transition-all ${isSelected ? 'border-blue-500 bg-blue-500 text-white' : 'border-gray-300'
-                      }`}>
-                      {isSelected && <CircleDotIcon className="h-4 w-4" />}
-                    </div>
-                  </button>
-                );
-              })}
-            </div>
-          )}
-
           {/* Navigation Buttons */}
           <div className="flex gap-4 mt-8 pt-4 border-t border-gray-100">
             {step > 1 && (
@@ -436,7 +390,7 @@ export default function RegisterPage() {
                   <Loader2 className="animate-spin mr-2 h-5 w-5" />
                   Processing...
                 </>
-              ) : step === 3 ? (
+              ) : step === 2 ? (
                 <>
                   Complete Registration
                   <CheckCircle className="ml-2 h-5 w-5" />
