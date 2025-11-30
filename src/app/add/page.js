@@ -48,7 +48,6 @@ export default function AddLogPage() {
     studyHours: '',
     screenTime: '',
     spending: '',
-    notes: '',
     // Relationships
     qualityTime: '',
     socialCount: '',
@@ -214,7 +213,6 @@ export default function AddLogPage() {
         foodQuality: formData.foodQuality ? parseInt(formData.foodQuality) : null,
         spending: formData.spending ? parseFloat(formData.spending) : null,
         mood: formData.mood ? parseInt(formData.mood) : null,
-        notes: formData.notes || null,
         qualityTime: formData.qualityTime ? parseFloat(formData.qualityTime) : null,
         socialCount: formData.socialCount ? parseInt(formData.socialCount) : null,
         connectionQuality: formData.connectionQuality ? parseInt(formData.connectionQuality) : null,
@@ -509,16 +507,6 @@ export default function AddLogPage() {
           </div>
         )}
 
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">Notes (Optional)</label>
-          <textarea
-            value={formData.notes}
-            onChange={(e) => handleInputChange('notes', e.target.value)}
-            rows={4}
-            className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all resize-none text-gray-900 bg-gray-50/50"
-            placeholder="Any additional thoughts or details..."
-          />
-        </div>
 
         {/* XP Preview */}
         <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-100 rounded-xl p-4 flex items-center justify-between">
@@ -680,7 +668,6 @@ export default function AddLogPage() {
                       studyHours: '',
                       screenTime: '',
                       spending: '',
-                      notes: '',
                     });
                   }}
                   className="text-sm font-medium text-gray-500 hover:text-gray-900 underline"
