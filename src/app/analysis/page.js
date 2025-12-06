@@ -251,125 +251,27 @@ export default function AnalysisPage() {
 
       switch (log.domain) {
         case 'Physical Health':
-          // Combine sleep, exercise, and food quality
-          // XP Rules: Sleep < 4 or > 12 = -2 XP.  Exercise 1-9 min = -2 XP. Food 1 = -2 XP.
-
-          const sleepScore = (() => {
-            const s = getNum(log.sleepHours);
-            if (s === null) return null;
-            if (s >= 7 && s <= 9) return 10;
-            if (s >= 6 && s <= 10) return 7;
-            if (s >= 5 && s <= 11) return 5;
-            return 0; // <5 or >11 is -2 XP => Score 0
-          })();
-
-          const exerciseScore = (() => {
-            const e = getNum(log.exerciseMinutes);
-            if (e === null) return null;
-            if (e >= 60) return 10;
-            if (e >= 30) return 7;
-            if (e >= 15) return 5;
-            if (e >= 10) return 3; // 10-14 mins = +5 XP
-            return 0; // <10 mins (including 1-9 mins which is -2 XP) => Score 0
-          })();
-
-          const foodScore = (() => {
-            const f = getNum(log.foodQuality);
-            if (f === null) return null;
-            if (f >= 8) return 10; // +15 XP
-            if (f >= 6) return 8;  // +10 XP
-            if (f >= 4) return 5;  // +5 XP
-            return 0; // 1-3 (incl 1 which is -2 XP) => Score 0
-          })();
-
-          const physicalScores = [sleepScore, exerciseScore, foodScore].filter(v => v !== null);
-          if (physicalScores.length > 0) {
-            metricValue = physicalScores.reduce((a, b) => a + b, 0) / physicalScores.length;
-          }
+          // Use foodQuality directly (already 1-10 scale)
+          const f = getNum(log.foodQuality);
+          if (f !== null) metricValue = f;
           break;
-
         case 'Mental Health':
-          // XP: Mood >= 8 (+15), >=6 (+10), >=4 (+5), >=1 (-2)
-          const m = getNum(log.mood);
-          if (m !== null) {
-            if (m >= 8) metricValue = 10;
-            else if (m >= 6) metricValue = 7;
-            else if (m >= 4) metricValue = 5;
-            else metricValue = 0; // Mood 1-3 is -2 XP => Score 0
-          }
+          metricValue = getNum(log.mood);
           break;
-
         case 'Career/Education':
-          // XP: >=1 hr (+5+), <1 hr (-2 XP)
-          const study = getNum(log.studyHours);
-          if (study !== null) {
-            if (study >= 4) metricValue = 10;
-            else if (study >= 2) metricValue = 7;
-            else if (study >= 1) metricValue = 5;
-            else metricValue = 0; // <1 hr (incl 0) is -2 XP => Score 0
-          }
+          const st = getNum(log.studyHours);
+          if (st !== null) metricValue = Math.min(10, (st / 5) * 10);
           break;
-
         case 'Finance':
-          // XP: <=8000 (+5+), >8000 (-2 XP)
-          const spending = getNum(log.spending);
-          if (spending !== null) {
-            if (spending <= 500) metricValue = 10;
-            else if (spending <= 1500) metricValue = 8;
-            else if (spending <= 3000) metricValue = 6;
-            else if (spending <= 8000) metricValue = 4;
-            else metricValue = 0; // >8000 is -2 XP => Score 0
-          }
+          const sp = getNum(log.spending);
+          if (sp !== null) metricValue = Math.max(0, 10 - (sp / 400));
           break;
-
         case 'Relationships':
-          // XP penalties for time < 1hr? Or time >= 0 is -2 XP?
-          // add/page.js logic for Rel: time >= 4 (+15), time >= 3 (+10), time >= 1 (+5), time >= 0 (-2)
-          // So time < 1 but >= 0 gets -2 XP. 
-          const timeScore = (() => {
-            const t = getNum(log.qualityTime);
-            if (t === null) return null;
-            if (t >= 3) return 10;
-            if (t >= 1) return 7;
-            return 0; // <1 hr is -2 XP => Score 0
-          })();
-
-          // XP: Count >=1 (+2+). Count 0? Undefined but likely 0 XP or not logged.
-          const socialScore = (() => {
-            const c = getNum(log.socialCount);
-            if (c === null) return null;
-            if (c >= 5) return 10;
-            if (c >= 3) return 7;
-            if (c >= 1) return 5;
-            return 0;
-          })();
-
-          // XP: Quality >= 4 (+5+), < 4 (-2 XP likely 1-3)
-          const connQuality = (() => {
-            const q = getNum(log.connectionQuality);
-            if (q === null) return null;
-            if (q >= 8) return 10;
-            if (q >= 6) return 8;
-            if (q >= 4) return 5;
-            return 0; // 1-3 is -2 XP => Score 0
-          })();
-
-          const relScores = [timeScore, socialScore, connQuality].filter(v => v !== null);
-          if (relScores.length > 0) {
-            metricValue = relScores.reduce((a, b) => a + b, 0) / relScores.length;
-          }
+          metricValue = getNum(log.connectionQuality);
           break;
-
         case 'Hobbies':
-          // XP: >=1 (+5+), <1 (0 XP? or -2?)
-          // Usually <1 is not awarded. Code didn't explicit show -2.
-          // But consistency: <1 hr = 0 score.
-          const hobbyTime = getNum(log.screenTime);
-          if (hobbyTime !== null) {
-            if (hobbyTime >= 3) metricValue = 10;
-            else if (hobbyTime >= 1) metricValue = 7;
-            else metricValue = 0; // <1 hr => Score 0
-          }
+          const h = getNum(log.screenTime);
+          if (h !== null) metricValue = Math.min(10, (h / 5) * 10);
           break;
       }
 
@@ -580,7 +482,7 @@ export default function AnalysisPage() {
             </div>
             <h3 className="text-xl font-bold text-gray-900 mb-2">No data found</h3>
             <p className="text-gray-500 mb-6">
-              {dateRange === 365 ? "You have not logged any habits yet. Start today!" : "No habits found in this time range. Try selecting All Time or log a new habit."}
+              {dateRange === 365 ? "You haven't logged any habits yet. Start today!" : "No habits found in this time range. Try selecting 'All Time' or log a new habit."}
             </p>
             <Link href="/add" className="inline-flex items-center px-6 py-3 bg-blue-600 text-white rounded-xl font-medium hover:bg-blue-700 transition-colors shadow-lg shadow-blue-500/30">
               Log Your First Habit
