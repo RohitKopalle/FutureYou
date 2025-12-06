@@ -6,9 +6,8 @@ import { supabase } from '@/lib/supabase';
 import Chart from 'chart.js/auto';
 import {
   ArrowLeft,
-  Calendar,
-  TrendingUp,
   Activity,
+  TrendingUp,
   Award,
   Loader2,
   AlertCircle
@@ -25,12 +24,129 @@ const DOMAINS = [
 ];
 
 const DOMAIN_COLORS = {
-  'Physical Health': 'rgba(239, 68, 68, 0.7)', // red-500
-  'Mental Health': 'rgba(168, 85, 247, 0.7)', // purple-500
-  'Career/Education': 'rgba(59, 130, 246, 0.7)', // blue-500
-  'Relationships': 'rgba(34, 197, 94, 0.7)', // green-500
-  'Finance': 'rgba(234, 179, 8, 0.7)', // yellow-500
-  'Hobbies': 'rgba(236, 72, 153, 0.7)', // pink-500
+  'Physical Health': 'rgba(239, 68, 68, 0.7)',
+  'Mental Health': 'rgba(168, 85, 247, 0.7)',
+  'Career/Education': 'rgba(59, 130, 246, 0.7)',
+  'Relationships': 'rgba(34, 197, 94, 0.7)',
+  'Finance': 'rgba(234, 179, 8, 0.7)',
+  'Hobbies': 'rgba(236, 72, 153, 0.7)',
+};
+
+// Helper: Get local date string YYYY-MM-DD (avoids timezone issues)
+const getLocalDateString = (date) => {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
+
+// Helper: Generate last N days ending TODAY
+const getLast30Days = (numDays) => {
+  const days = [];
+  const today = new Date();
+  for (let i = numDays - 1; i >= 0; i--) {
+    const date = new Date(today);
+    date.setDate(date.getDate() - i);
+    days.push(getLocalDateString(date));
+  }
+  return days;
+};
+
+// XP Calculation - SAME LOGIC AS add/page.js
+const calculateLogXP = (log) => {
+  let xp = 0;
+  const domain = log.domain;
+
+  const getNum = (val) => (val !== null && val !== undefined && val !== '' ? Number(val) : null);
+
+  if (domain === 'Physical Health') {
+    const sleep = getNum(log.sleepHours);
+    if (sleep !== null) {
+      if (sleep >= 7 && sleep <= 9) xp += 15;
+      else if (sleep >= 6 && sleep <= 10) xp += 10;
+      else if (sleep >= 4 && sleep <= 12) xp += 5;
+      else xp -= 2;
+    }
+    const exercise = getNum(log.exerciseMinutes);
+    if (exercise !== null) {
+      if (exercise >= 40) xp += 15;
+      else if (exercise >= 25) xp += 10;
+      else if (exercise >= 10) xp += 5;
+      else if (exercise > 0) xp -= 2;
+    }
+    const food = getNum(log.foodQuality);
+    if (food !== null) {
+      if (food >= 8) xp += 15;
+      else if (food >= 6) xp += 10;
+      else if (food >= 4) xp += 5;
+      else if (food >= 1) xp -= 2;
+    }
+  } else if (domain === 'Mental Health') {
+    const mood = getNum(log.mood);
+    if (mood !== null) {
+      if (mood >= 8) xp += 15;
+      else if (mood >= 6) xp += 10;
+      else if (mood >= 4) xp += 5;
+      else if (mood >= 1) xp -= 2;
+    }
+  } else if (domain === 'Career/Education') {
+    const study = getNum(log.studyHours);
+    if (study !== null) {
+      if (study >= 5) xp += 20;
+      else if (study >= 3) xp += 15;
+      else if (study >= 2) xp += 10;
+      else if (study >= 1) xp += 5;
+      else if (study >= 0) xp -= 2;
+    }
+  } else if (domain === 'Finance') {
+    const spending = getNum(log.spending);
+    if (spending !== null) {
+      if (spending <= 500) xp += 20;
+      else if (spending <= 1000) xp += 15;
+      else if (spending <= 4000) xp += 10;
+      else if (spending <= 8000) xp += 5;
+      else xp -= 2;
+    }
+  } else if (domain === 'Hobbies') {
+    const duration = getNum(log.screenTime);
+    if (duration !== null) {
+      if (duration >= 5) xp += 15;
+      else if (duration >= 3) xp += 10;
+      else if (duration >= 1) xp += 5;
+    }
+  } else if (domain === 'Relationships') {
+    const time = getNum(log.qualityTime);
+    if (time !== null) {
+      if (time >= 4) xp += 15;
+      else if (time >= 3) xp += 10;
+      else if (time >= 1) xp += 5;
+      else if (time >= 0) xp -= 2;
+    }
+    const count = getNum(log.socialCount);
+    if (count !== null) {
+      if (count >= 5) xp += 15;
+      else if (count >= 3) xp += 10;
+      else if (count >= 2) xp += 5;
+      else if (count >= 1) xp += 2;
+    }
+    const quality = getNum(log.connectionQuality);
+    if (quality !== null) {
+      if (quality >= 8) xp += 15;
+      else if (quality >= 6) xp += 10;
+      else if (quality >= 4) xp += 5;
+      else if (quality >= 1) xp -= 2;
+    }
+  }
+
+  return Math.min(50, Math.max(-20, xp));
+};
+
+// Helper: Calculate average (only non-null values)
+const calculateAverage = (values) => {
+  const validValues = values.filter(v => v !== null && v !== undefined && !isNaN(v));
+  if (validValues.length === 0) return 0;
+  const sum = validValues.reduce((a, b) => a + b, 0);
+  return Math.round((sum / validValues.length) * 10) / 10;
 };
 
 export default function AnalysisPage() {
@@ -38,15 +154,12 @@ export default function AnalysisPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [habits, setHabits] = useState([]);
-  const [dateRange, setDateRange] = useState(30); // 7, 30, or 365 (All time)
+  const [dateRange, setDateRange] = useState(30);
   const [userProfile, setUserProfile] = useState(null);
 
-  // Canvas Refs
   const lineChartRef = useRef(null);
   const barChartRef = useRef(null);
   const radarChartRef = useRef(null);
-
-  // Chart Instances Refs
   const lineChartInstance = useRef(null);
   const barChartInstance = useRef(null);
   const radarChartInstance = useRef(null);
@@ -54,6 +167,7 @@ export default function AnalysisPage() {
   useEffect(() => {
     const fetchData = async () => {
       setLoading(true);
+      setError(null);
       try {
         const userId = localStorage.getItem('userId');
         if (!userId) {
@@ -61,7 +175,6 @@ export default function AnalysisPage() {
           return;
         }
 
-        // Fetch User Profile
         const { data: profile, error: profileError } = await supabase
           .from('user_profiles')
           .select('*')
@@ -71,7 +184,6 @@ export default function AnalysisPage() {
         if (profileError) throw profileError;
         setUserProfile(profile);
 
-        // Fetch Habits
         const { data: habitsData, error: habitsError } = await supabase
           .from('habits')
           .select('*')
@@ -79,6 +191,8 @@ export default function AnalysisPage() {
           .order('date', { ascending: true });
 
         if (habitsError) throw habitsError;
+
+        console.log('Fetched Habits:', habitsData);
         setHabits(habitsData || []);
 
       } catch (err) {
@@ -92,144 +206,146 @@ export default function AnalysisPage() {
     fetchData();
   }, [router]);
 
-  // Process Data based on Date Range
   const processedData = useMemo(() => {
-    if (!habits.length) return null;
+    if (loading) return null;
 
-    const now = new Date();
-    const cutoffDate = new Date();
-    cutoffDate.setDate(now.getDate() - dateRange);
+    const dates = getLast30Days(dateRange);
+    const startDate = dates[0];
+    const endDate = dates[dates.length - 1];
 
-    const filteredHabits = habits.filter(h => new Date(h.date) >= cutoffDate);
+    console.log('Date Range:', startDate, 'to', endDate);
 
-    // 1. XP Progress (Cumulative) & Domain XP
-    const xpByDate = {};
-    const xpByDomain = {};
-    DOMAINS.forEach(d => xpByDomain[d] = 0);
+    const filteredHabits = habits.filter(h => {
+      const logDate = h.date.split('T')[0];
+      return logDate >= startDate && logDate <= endDate;
+    });
 
-    let cumulativeXP = 0;
+    console.log('Filtered Habits:', filteredHabits.length);
 
-    // Initialize dates for the range to ensure continuous line
-    for (let d = new Date(cutoffDate); d <= now; d.setDate(d.getDate() + 1)) {
-      const dateStr = d.toISOString().split('T')[0];
-      xpByDate[dateStr] = 0;
-    }
+    const dailyXP = {};
+    const domainCounts = {};
+    const domainMetrics = {};
 
-    filteredHabits.forEach(h => {
-      let xp = 10; // Base XP for logging
+    dates.forEach(date => { dailyXP[date] = 0; });
+    DOMAINS.forEach(d => {
+      domainCounts[d] = 0;
+      domainMetrics[d] = [];
+    });
 
-      // Calculate XP based on domain-specific metrics
-      switch (h.domain) {
+    let totalXP = 0;
+    filteredHabits.forEach(log => {
+      const logDate = log.date.split('T')[0];
+
+      const xp = calculateLogXP(log);
+      if (dailyXP.hasOwnProperty(logDate)) {
+        dailyXP[logDate] += xp;
+      }
+      totalXP += xp;
+
+      if (domainCounts.hasOwnProperty(log.domain)) {
+        domainCounts[log.domain]++;
+      }
+
+      const getNum = (val) => (val !== null && val !== undefined && val !== '' ? Number(val) : null);
+      let metricValue = null;
+
+      switch (log.domain) {
         case 'Physical Health':
-          if (h.exerciseDuration > 0) xp += Math.min(20, h.exerciseDuration / 2); // 1 min = 0.5 XP
-          if (h.sleepHours >= 7) xp += 10;
-          if (h.foodQuality >= 7) xp += 5;
+          // Use foodQuality directly (already 1-10 scale)
+          const f = getNum(log.foodQuality);
+          if (f !== null) metricValue = f;
           break;
         case 'Mental Health':
-          if (h.meditationDuration > 0) xp += Math.min(20, h.meditationDuration); // 1 min = 1 XP
-          if (h.mood >= 7) xp += 10;
+          metricValue = getNum(log.mood);
           break;
         case 'Career/Education':
-          if (h.studyHours > 0) xp += Math.min(30, h.studyHours * 5); // 1 hr = 5 XP
-          if (h.readingDuration > 0) xp += Math.min(20, h.readingDuration / 2);
-          break;
-        case 'Relationships':
-          if (h.qualityTime > 0) xp += Math.min(20, h.qualityTime * 5);
-          if (h.connectionQuality >= 7) xp += 10;
-          if (h.socialCount > 0) xp += 5;
+          const st = getNum(log.studyHours);
+          if (st !== null) metricValue = Math.min(10, (st / 5) * 10);
           break;
         case 'Finance':
-          // Assuming simple log count or manual input for now
-          xp += 5;
+          const sp = getNum(log.spending);
+          if (sp !== null) metricValue = Math.max(0, 10 - (sp / 400));
+          break;
+        case 'Relationships':
+          metricValue = getNum(log.connectionQuality);
           break;
         case 'Hobbies':
-          // Assuming generic duration or just log
-          xp += 10;
-          break;
-        default:
+          const h = getNum(log.screenTime);
+          if (h !== null) metricValue = Math.min(10, (h / 5) * 10);
           break;
       }
 
-      // General Mood Bonus
-      if (h.mood >= 8) xp += 5;
-
-      // Update Daily XP
-      const date = h.date;
-      if (xpByDate[date] !== undefined) {
-        xpByDate[date] += xp;
-      }
-
-      // Update Domain XP
-      if (xpByDomain[h.domain] !== undefined) {
-        xpByDomain[h.domain] += xp;
+      if (metricValue !== null && domainMetrics.hasOwnProperty(log.domain)) {
+        domainMetrics[log.domain].push(metricValue);
       }
     });
 
-    // Cumulative sum for Line Chart
-    const sortedDates = Object.keys(xpByDate).sort();
-    const xpData = [];
+    const cumulativeXP = [];
     let runningTotal = 0;
-    sortedDates.forEach(date => {
-      runningTotal += xpByDate[date];
-      xpData.push(runningTotal);
+    dates.forEach(date => {
+      runningTotal += dailyXP[date];
+      cumulativeXP.push(runningTotal);
     });
 
+    const radarData = DOMAINS.map(d => calculateAverage(domainMetrics[d]));
 
-    // 2. Domain Activity (Count)
-    const domainCounts = {};
-    DOMAINS.forEach(d => domainCounts[d] = 0);
-    filteredHabits.forEach(h => {
-      if (domainCounts[h.domain] !== undefined) {
-        domainCounts[h.domain]++;
-      }
-    });
-
-    // 3. Radar Data (Total XP per Domain)
-    // We use the calculated xpByDomain
-    const radarData = DOMAINS.map(d => xpByDomain[d]);
-
-    // 4. Streak Grid
+    // Streak grid (last 14 days) - aligned to weekdays
+    const streakDates = getLast30Days(14);
     const streakGrid = [];
-    for (let i = 13; i >= 0; i--) {
-      const d = new Date();
-      d.setDate(d.getDate() - i);
-      const dateStr = d.toISOString().split('T')[0];
-      const hasLog = habits.some(h => h.date === dateStr);
-      streakGrid.push({ date: d, hasLog });
+
+    // Add empty cells to align first date with correct weekday
+    const firstDateStr = streakDates[0];
+    const [fy, fm, fd] = firstDateStr.split('-').map(Number);
+    const firstDate = new Date(fy, fm - 1, fd);
+    const firstDayOfWeek = firstDate.getDay(); // 0=Sun, 1=Mon, ..., 6=Sat
+
+    for (let i = 0; i < firstDayOfWeek; i++) {
+      streakGrid.push({ date: null, hasLog: false, isEmpty: true });
     }
 
-    return {
-      dates: sortedDates.map(d => new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })),
-      xpData,
+    streakDates.forEach(dateStr => {
+      const [y, m, day] = dateStr.split('-').map(Number);
+      const dateObj = new Date(y, m - 1, day);
+      const hasLog = habits.some(h => h.date.split('T')[0] === dateStr);
+      streakGrid.push({ date: dateObj, hasLog, isEmpty: false });
+    });
+
+    const sortedDomains = Object.entries(domainCounts).sort((a, b) => b[1] - a[1]);
+    const topDomain = sortedDomains[0] && sortedDomains[0][1] > 0 ? sortedDomains[0][0] : 'None';
+
+    const result = {
+      dates: dates.map(d => {
+        const [y, m, day] = d.split('-').map(Number);
+        return new Date(y, m - 1, day).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+      }),
+      xpData: cumulativeXP,
       domainCounts,
       radarData,
       streakGrid,
       totalLogs: filteredHabits.length,
-      avgXP: filteredHabits.length ? Math.round(runningTotal / filteredHabits.length) : 0,
-      topDomain: Object.entries(domainCounts).sort((a, b) => b[1] - a[1])[0][0]
+      avgXP: filteredHabits.length ? Math.round(totalXP / filteredHabits.length) : 0,
+      topDomain
     };
 
-  }, [habits, dateRange]);
+    console.log('Processed Data:', result);
+    return result;
 
+  }, [habits, dateRange, loading]);
 
-  // Initialize Charts
   useEffect(() => {
     if (!processedData || loading) return;
 
-    // Destroy existing charts
     if (lineChartInstance.current) lineChartInstance.current.destroy();
     if (barChartInstance.current) barChartInstance.current.destroy();
     if (radarChartInstance.current) radarChartInstance.current.destroy();
 
-    // 1. Line Chart
     if (lineChartRef.current) {
-      const ctx = lineChartRef.current.getContext('2d');
-      lineChartInstance.current = new Chart(ctx, {
+      lineChartInstance.current = new Chart(lineChartRef.current.getContext('2d'), {
         type: 'line',
         data: {
           labels: processedData.dates,
           datasets: [{
-            label: 'Estimated XP Growth',
+            label: 'Cumulative XP',
             data: processedData.xpData,
             fill: true,
             backgroundColor: 'rgba(59, 130, 246, 0.1)',
@@ -241,39 +357,25 @@ export default function AnalysisPage() {
         options: {
           responsive: true,
           maintainAspectRatio: false,
-          plugins: {
-            legend: { display: false },
-            tooltip: {
-              mode: 'index',
-              intersect: false,
-              backgroundColor: 'rgba(255, 255, 255, 0.9)',
-              titleColor: '#1f2937',
-              bodyColor: '#1f2937',
-              borderColor: '#e5e7eb',
-              borderWidth: 1,
-              padding: 10,
-            }
-          },
+          plugins: { legend: { display: false } },
           scales: {
             y: { beginAtZero: true, grid: { color: '#f3f4f6' } },
-            x: { grid: { display: false } }
+            x: { grid: { display: false }, ticks: { maxTicksLimit: 10 } }
           }
         }
       });
     }
 
-    // 2. Bar Chart
     if (barChartRef.current) {
-      const ctx = barChartRef.current.getContext('2d');
-      barChartInstance.current = new Chart(ctx, {
+      barChartInstance.current = new Chart(barChartRef.current.getContext('2d'), {
         type: 'bar',
         data: {
           labels: DOMAINS,
           datasets: [{
             label: 'Logs',
-            data: DOMAINS.map(d => processedData.domainCounts[d] || 0),
+            data: DOMAINS.map(d => processedData.domainCounts[d]),
             backgroundColor: DOMAINS.map(d => DOMAIN_COLORS[d]),
-            borderRadius: 8,
+            borderRadius: 6,
           }]
         },
         options: {
@@ -281,26 +383,25 @@ export default function AnalysisPage() {
           maintainAspectRatio: false,
           plugins: { legend: { display: false } },
           scales: {
-            y: { beginAtZero: true, grid: { color: '#f3f4f6' } },
+            y: { beginAtZero: true, grid: { color: '#f3f4f6' }, ticks: { stepSize: 1 } },
             x: { grid: { display: false } }
           }
         }
       });
     }
 
-    // 3. Radar Chart
     if (radarChartRef.current) {
-      const ctx = radarChartRef.current.getContext('2d');
-      radarChartInstance.current = new Chart(ctx, {
+      radarChartInstance.current = new Chart(radarChartRef.current.getContext('2d'), {
         type: 'radar',
         data: {
           labels: DOMAINS,
           datasets: [{
-            label: 'Total XP Earned',
+            label: 'Avg Score (0-10)',
             data: processedData.radarData,
-            backgroundColor: 'rgba(59, 130, 246, 0.2)',
-            borderColor: '#3b82f6',
+            backgroundColor: 'rgba(168, 85, 247, 0.2)',
+            borderColor: '#a855f7',
             borderWidth: 2,
+            pointBackgroundColor: '#a855f7',
           }]
         },
         options: {
@@ -310,33 +411,22 @@ export default function AnalysisPage() {
             r: {
               angleLines: { color: '#e5e7eb' },
               grid: { color: '#e5e7eb' },
-              suggestedMin: 0,
-              // Remove suggestedMax to let it scale automatically based on XP
-              ticks: { backdropColor: 'transparent', display: false } // Hide ticks for cleaner look
+              min: 0,
+              max: 10,
+              ticks: { display: false }
             }
           },
-          plugins: {
-            legend: { display: false }, // Hide legend as it's just one dataset
-            tooltip: {
-              callbacks: {
-                label: function (context) {
-                  return `XP Earned: ${context.raw}`;
-                }
-              }
-            }
-          }
+          plugins: { legend: { display: false } }
         }
       });
     }
 
-    // Cleanup function
     return () => {
       if (lineChartInstance.current) lineChartInstance.current.destroy();
       if (barChartInstance.current) barChartInstance.current.destroy();
       if (radarChartInstance.current) radarChartInstance.current.destroy();
     };
   }, [processedData, loading]);
-
 
   if (loading) {
     return (
@@ -353,10 +443,7 @@ export default function AnalysisPage() {
           <AlertCircle className="h-12 w-12 text-red-500 mx-auto mb-4" />
           <h2 className="text-xl font-bold text-gray-900 mb-2">Something went wrong</h2>
           <p className="text-gray-600 mb-6">{error}</p>
-          <button
-            onClick={() => window.location.reload()}
-            className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-          >
+          <button onClick={() => window.location.reload()} className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
             Try Again
           </button>
         </div>
@@ -367,30 +454,20 @@ export default function AnalysisPage() {
   return (
     <main className="min-h-screen bg-gray-50/50 p-4 md:p-8 pt-24 pb-20">
       <div className="mx-auto max-w-6xl space-y-8">
-
-        {/* Header */}
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 fade-in-animation">
           <div>
-            <Link
-              href="/dashboard"
-              className="inline-flex items-center text-sm text-gray-500 hover:text-blue-600 transition-colors mb-2"
-            >
-              <ArrowLeft className="w-4 h-4 mr-1" />
-              Back to Dashboard
+            <Link href="/dashboard" className="inline-flex items-center text-sm text-gray-500 hover:text-blue-600 transition-colors mb-2">
+              <ArrowLeft className="w-4 h-4 mr-1" /> Back to Dashboard
             </Link>
             <h1 className="text-3xl font-bold text-gray-900">Progress Analysis</h1>
             <p className="text-gray-500">Visualize your journey and habits</p>
           </div>
-
           <div className="flex bg-white p-1 rounded-xl border border-gray-200 shadow-sm">
             {[7, 30, 365].map((days) => (
               <button
                 key={days}
                 onClick={() => setDateRange(days)}
-                className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${dateRange === days
-                  ? 'bg-blue-600 text-white shadow-md'
-                  : 'text-gray-600 hover:bg-gray-50'
-                  }`}
+                className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${dateRange === days ? 'bg-blue-600 text-white shadow-md' : 'text-gray-600 hover:bg-gray-50'}`}
               >
                 {days === 365 ? 'All Time' : `Last ${days} Days`}
               </button>
@@ -398,107 +475,104 @@ export default function AnalysisPage() {
           </div>
         </div>
 
-        {/* Quick Stats */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 fade-in-animation" style={{ animationDelay: '0.1s' }}>
-          <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 flex items-center gap-4">
-            <div className="p-3 bg-blue-50 text-blue-600 rounded-xl">
-              <Activity className="h-6 w-6" />
+        {processedData?.totalLogs === 0 ? (
+          <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-12 text-center fade-in-animation">
+            <div className="w-16 h-16 bg-blue-50 text-blue-600 rounded-full flex items-center justify-center mx-auto mb-4">
+              <Activity className="h-8 w-8" />
             </div>
-            <div>
-              <p className="text-sm text-gray-500 font-medium">Total Logs</p>
-              <p className="text-2xl font-bold text-gray-900">{processedData?.totalLogs || 0}</p>
-            </div>
+            <h3 className="text-xl font-bold text-gray-900 mb-2">No data found</h3>
+            <p className="text-gray-500 mb-6">
+              {dateRange === 365 ? "You haven't logged any habits yet. Start today!" : "No habits found in this time range. Try selecting 'All Time' or log a new habit."}
+            </p>
+            <Link href="/add" className="inline-flex items-center px-6 py-3 bg-blue-600 text-white rounded-xl font-medium hover:bg-blue-700 transition-colors shadow-lg shadow-blue-500/30">
+              Log Your First Habit
+            </Link>
           </div>
-          <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 flex items-center gap-4">
-            <div className="p-3 bg-purple-50 text-purple-600 rounded-xl">
-              <TrendingUp className="h-6 w-6" />
-            </div>
-            <div>
-              <p className="text-sm text-gray-500 font-medium">Avg XP / Log</p>
-              <p className="text-2xl font-bold text-gray-900">{processedData?.avgXP || 0}</p>
-            </div>
-          </div>
-          <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 flex items-center gap-4">
-            <div className="p-3 bg-green-50 text-green-600 rounded-xl">
-              <Award className="h-6 w-6" />
-            </div>
-            <div>
-              <p className="text-sm text-gray-500 font-medium">Top Focus</p>
-              <p className="text-2xl font-bold text-gray-900">{processedData?.topDomain || 'None'}</p>
-            </div>
-          </div>
-        </div>
-
-        {/* Charts Grid */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-
-          {/* XP Progress */}
-          <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 fade-in-animation" style={{ animationDelay: '0.2s' }}>
-            <div className="flex items-center justify-between mb-6">
-              <h3 className="text-lg font-bold text-gray-900">XP Growth</h3>
-              <span className="text-xs font-medium px-2 py-1 bg-blue-50 text-blue-600 rounded-full">Cumulative</span>
-            </div>
-            <div className="h-64 w-full relative">
-              <canvas ref={lineChartRef}></canvas>
-            </div>
-          </div>
-
-          {/* Domain Activity */}
-          <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 fade-in-animation" style={{ animationDelay: '0.3s' }}>
-            <div className="flex items-center justify-between mb-6">
-              <h3 className="text-lg font-bold text-gray-900">Domain Focus</h3>
-              <span className="text-xs font-medium px-2 py-1 bg-gray-100 text-gray-600 rounded-full">Activity Count</span>
-            </div>
-            <div className="h-64 w-full relative">
-              <canvas ref={barChartRef}></canvas>
-            </div>
-          </div>
-
-          {/* Weekly Streak Grid */}
-          <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 fade-in-animation" style={{ animationDelay: '0.4s' }}>
-            <div className="flex items-center justify-between mb-6">
-              <h3 className="text-lg font-bold text-gray-900">Recent Consistency</h3>
-              <div className="flex items-center gap-2 text-xs text-gray-500">
-                <div className="w-3 h-3 bg-green-500 rounded-sm"></div> Logged
-                <div className="w-3 h-3 bg-gray-100 rounded-sm"></div> Missed
+        ) : (
+          <>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 fade-in-animation" style={{ animationDelay: '0.1s' }}>
+              <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 flex items-center gap-4">
+                <div className="p-3 bg-blue-50 text-blue-600 rounded-xl"><Activity className="h-6 w-6" /></div>
+                <div>
+                  <p className="text-sm text-gray-500 font-medium">Total Logs</p>
+                  <p className="text-2xl font-bold text-gray-900">{processedData?.totalLogs || 0}</p>
+                </div>
+              </div>
+              <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 flex items-center gap-4">
+                <div className="p-3 bg-purple-50 text-purple-600 rounded-xl"><TrendingUp className="h-6 w-6" /></div>
+                <div>
+                  <p className="text-sm text-gray-500 font-medium">Avg XP / Log</p>
+                  <p className="text-2xl font-bold text-gray-900">{processedData?.avgXP || 0}</p>
+                </div>
+              </div>
+              <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 flex items-center gap-4">
+                <div className="p-3 bg-green-50 text-green-600 rounded-xl"><Award className="h-6 w-6" /></div>
+                <div>
+                  <p className="text-sm text-gray-500 font-medium">Top Focus</p>
+                  <p className="text-2xl font-bold text-gray-900">{processedData?.topDomain || 'None'}</p>
+                </div>
               </div>
             </div>
-            <div className="grid grid-cols-7 gap-2">
-              {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(day => (
-                <div key={day} className="text-center text-xs text-gray-400 font-medium py-1">{day}</div>
-              ))}
-              {processedData?.streakGrid.map((day, i) => (
-                <div
-                  key={i}
-                  className={`aspect-square rounded-lg flex items-center justify-center text-xs font-medium transition-all hover:scale-105 ${day.hasLog
-                    ? 'bg-green-500 text-white shadow-lg shadow-green-500/30'
-                    : 'bg-gray-100 text-gray-400'
-                    }`}
-                  title={day.date.toLocaleDateString()}
-                >
-                  {day.date.getDate()}
+
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 fade-in-animation" style={{ animationDelay: '0.2s' }}>
+                <div className="flex items-center justify-between mb-6">
+                  <h3 className="text-lg font-bold text-gray-900">XP Growth</h3>
+                  <span className="text-xs font-medium px-2 py-1 bg-blue-50 text-blue-600 rounded-full">Cumulative</span>
                 </div>
-              ))}
-            </div>
-            <div className="mt-6 text-center">
-              <p className="text-sm text-gray-600">
-                Current Streak: <span className="font-bold text-green-600">{userProfile?.currentStreak || 0} Days</span>
-              </p>
-            </div>
-          </div>
+                <div className="h-64 w-full relative"><canvas ref={lineChartRef}></canvas></div>
+              </div>
 
-          {/* Radar Chart */}
-          <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 fade-in-animation" style={{ animationDelay: '0.5s' }}>
-            <div className="flex items-center justify-between mb-6">
-              <h3 className="text-lg font-bold text-gray-900">Balance Check</h3>
-              <span className="text-xs font-medium px-2 py-1 bg-purple-50 text-purple-600 rounded-full">Avg Ratings</span>
-            </div>
-            <div className="h-64 w-full flex items-center justify-center relative">
-              <canvas ref={radarChartRef}></canvas>
-            </div>
-          </div>
+              <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 fade-in-animation" style={{ animationDelay: '0.3s' }}>
+                <div className="flex items-center justify-between mb-6">
+                  <h3 className="text-lg font-bold text-gray-900">Domain Focus</h3>
+                  <span className="text-xs font-medium px-2 py-1 bg-gray-100 text-gray-600 rounded-full">Activity Count</span>
+                </div>
+                <div className="h-64 w-full relative"><canvas ref={barChartRef}></canvas></div>
+              </div>
 
-        </div>
+              <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 fade-in-animation" style={{ animationDelay: '0.4s' }}>
+                <div className="flex items-center justify-between mb-6">
+                  <h3 className="text-lg font-bold text-gray-900">Recent Consistency</h3>
+                  <div className="flex items-center gap-2 text-xs text-gray-500">
+                    <div className="w-3 h-3 bg-green-500 rounded-sm"></div> Logged
+                    <div className="w-3 h-3 bg-gray-100 rounded-sm"></div> Missed
+                  </div>
+                </div>
+                <div className="grid grid-cols-7 gap-2">
+                  {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(day => (
+                    <div key={day} className="text-center text-xs text-gray-400 font-medium py-1">{day}</div>
+                  ))}
+                  {processedData?.streakGrid.map((day, i) => (
+                    <div
+                      key={i}
+                      className={`aspect-square rounded-lg flex items-center justify-center text-xs font-medium transition-all ${day.isEmpty
+                        ? 'bg-transparent'
+                        : day.hasLog
+                          ? 'bg-green-500 text-white shadow-lg shadow-green-500/30 hover:scale-105'
+                          : 'bg-gray-100 text-gray-400 hover:scale-105'
+                        }`}
+                      title={day.date ? day.date.toLocaleDateString() : ''}
+                    >
+                      {day.isEmpty ? '' : day.date?.getDate()}
+                    </div>
+                  ))}
+                </div>
+                <div className="mt-6 text-center">
+                  <p className="text-sm text-gray-600">Current Streak: <span className="font-bold text-green-600">{userProfile?.currentStreak || 0} Days</span></p>
+                </div>
+              </div>
+
+              <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 fade-in-animation" style={{ animationDelay: '0.5s' }}>
+                <div className="flex items-center justify-between mb-6">
+                  <h3 className="text-lg font-bold text-gray-900">Balance Check</h3>
+                  <span className="text-xs font-medium px-2 py-1 bg-purple-50 text-purple-600 rounded-full">Avg Ratings (0-10)</span>
+                </div>
+                <div className="h-64 w-full flex items-center justify-center relative"><canvas ref={radarChartRef}></canvas></div>
+              </div>
+            </div>
+          </>
+        )}
       </div>
     </main>
   );
