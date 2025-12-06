@@ -580,7 +580,7 @@ export default function AnalysisPage() {
             </div>
             <h3 className="text-xl font-bold text-gray-900 mb-2">No data found</h3>
             <p className="text-gray-500 mb-6">
-              {dateRange === 365 ? "You haven't logged any habits yet. Start today!" : "No habits found in this time range. Try selecting 'All Time' or log a new habit."}
+              {dateRange === 365 ? "You have not logged any habits yet. Start today!" : "No habits found in this time range. Try selecting All Time or log a new habit."}
             </p>
             <Link href="/add" className="inline-flex items-center px-6 py-3 bg-blue-600 text-white rounded-xl font-medium hover:bg-blue-700 transition-colors shadow-lg shadow-blue-500/30">
               Log Your First Habit
