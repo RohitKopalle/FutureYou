@@ -575,7 +575,7 @@ export default function AddLogPage() {
             <Trophy className="h-10 w-10 text-green-600" />
           </div>
           <h2 className="text-3xl font-bold text-gray-900 mb-2">Awesome Job!</h2>
-          <p className="text-gray-600 mb-6">You have successfully logged your activity.</p>
+          <p className="text-gray-600 mb-6">You've successfully logged your activity.</p>
 
           <div className="bg-gradient-to-r from-yellow-50 to-orange-50 border border-yellow-100 rounded-xl p-4 mb-8">
             <p className="text-sm text-yellow-800 font-medium uppercase tracking-wider mb-1">Earned</p>
