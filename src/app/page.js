@@ -118,7 +118,7 @@ export default function HomePage() {
       {/* CTA Section */}
       <section className="py-24 relative overflow-hidden">
         <div className="absolute inset-0 bg-gradient-to-br from-blue-600 to-indigo-700" />
-        <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-20" />
+        <div className="absolute inset-0 bg-[url('data:image/svg+xml,%3Csvg%20viewBox%3D%220%200%20200%20200%22%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%3E%3Cfilter%20id%3D%22noiseFilter%22%3E%3CfeTurbulence%20type%3D%22fractalNoise%22%20baseFrequency%3D%220.65%22%20numOctaves%3D%223%22%20stitchTiles%3D%22stitch%22%2F%3E%3C%2Ffilter%3E%3Crect%20width%3D%22100%25%22%20height%3D%22100%25%22%20filter%3D%22url(%23noiseFilter)%22%20opacity%3D%221%22%2F%3E%3C%2Fsvg%3E')] opacity-20" />
 
         <div className="mx-auto max-w-4xl text-center relative z-10 px-4">
           <h2 className="text-3xl md:text-5xl font-bold text-white mb-8 tracking-tight">
@@ -147,11 +147,6 @@ export default function HomePage() {
             <span className="text-xl font-bold text-gray-900">FutureYou</span>
           </div>
           <p className="text-gray-500 text-sm">© 2025 FutureYou. All rights reserved.</p>
-          <div className="flex gap-6 text-gray-500">
-            <a href="#" className="hover:text-blue-600 transition-colors">Privacy</a>
-            <a href="#" className="hover:text-blue-600 transition-colors">Terms</a>
-            <a href="#" className="hover:text-blue-600 transition-colors">Contact</a>
-          </div>
         </div>
       </footer>
     </main>
