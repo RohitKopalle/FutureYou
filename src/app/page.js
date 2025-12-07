@@ -125,7 +125,7 @@ export default function HomePage() {
             Ready to start your journey?
           </h2>
           <p className="text-xl text-blue-100 mb-10 max-w-2xl mx-auto">
-            Join thousands of users who are transforming their lives one habit at a time. No credit card required.
+            Join thousands of users who are transforming their lives one habit at a time.
           </p>
           <Link
             href="/register"
