@@ -25,7 +25,7 @@ export default function HomePage() {
           <h1 className="text-5xl md:text-7xl font-bold tracking-tight text-gray-900 mb-8 fade-in-animation" style={{ animationDelay: '0.1s' }}>
             Transform Your Future, <br />
             <span className="bg-clip-text text-transparent bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 text-glow">
-              One Day at a Time
+              By Improving Your Daily Habits
             </span>
           </h1>
 
