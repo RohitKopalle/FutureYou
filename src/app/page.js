@@ -125,7 +125,7 @@ export default function HomePage() {
             Ready to start your journey?
           </h2>
           <p className="text-xl text-blue-100 mb-10 max-w-2xl mx-auto">
-            Join thousands of users who are transforming their lives one habit at a time.
+            Join and take control of your habits. Small changes. Big results.
           </p>
           <Link
             href="/register"
