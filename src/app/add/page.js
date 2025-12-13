@@ -133,10 +133,10 @@ export default function AddLogPage() {
     } else if (domain === 'Finance') {
       if (formData.spending) {
         const spending = parseFloat(formData.spending);
-        if (spending <= 500) xp += 20;
-        else if (spending <= 1000) xp += 15;
-        else if (spending <= 4000) xp += 10;
-        else if (spending <= 8000) xp += 5;
+        if (spending <= 150) xp += 20;
+        else if (spending <= 300) xp += 15;
+        else if (spending <= 450) xp += 10;
+        else if (spending <= 600) xp += 5;
         else xp -= 2;
       }
     } else if (domain === 'Hobbies') {
@@ -693,3 +693,4 @@ export default function AddLogPage() {
     </main>
   );
 }
+
