@@ -101,10 +101,10 @@ const calculateLogXP = (log) => {
   } else if (domain === 'Finance') {
     const spending = getNum(log.spending);
     if (spending !== null) {
-      if (spending <= 500) xp += 20;
-      else if (spending <= 1000) xp += 15;
-      else if (spending <= 4000) xp += 10;
-      else if (spending <= 8000) xp += 5;
+      if (spending <= 150) xp += 20;
+      else if (spending <= 300) xp += 15;
+      else if (spending <= 450) xp += 10;
+      else if (spending <= 600) xp += 5;
       else xp -= 2;
     }
   } else if (domain === 'Hobbies') {
@@ -588,7 +588,7 @@ export default function AnalysisPage() {
           </div>
         ) : (
           <>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 fade-in-animation" style={{ animationDelay: '0.1s' }}>
+            <div className="grid grid-cols-3 md:grid-cols-2 gap-6 fade-in-animation" style={{ animationDelay: '0.1s' }}>
               <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 flex items-center gap-4">
                 <div className="p-3 bg-blue-50 text-blue-600 rounded-xl"><Activity className="h-6 w-6" /></div>
                 <div>
@@ -603,13 +603,7 @@ export default function AnalysisPage() {
                   <p className="text-2xl font-bold text-gray-900">{processedData?.avgXP || 0}</p>
                 </div>
               </div>
-              <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 flex items-center gap-4">
-                <div className="p-3 bg-green-50 text-green-600 rounded-xl"><Award className="h-6 w-6" /></div>
-                <div>
-                  <p className="text-sm text-gray-500 font-medium">Top Focus</p>
-                  <p className="text-2xl font-bold text-gray-900">{processedData?.topDomain || 'None'}</p>
-                </div>
-              </div>
+              
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -675,3 +669,4 @@ export default function AnalysisPage() {
     </main>
   );
 }
+
