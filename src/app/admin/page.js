@@ -68,6 +68,24 @@ export default function AIInsightsPage() {
     }
   };
 
+  const clearHistory = async () => {
+    if (!confirm('Are you sure you want to delete ALL predictions? This cannot be undone.')) return;
+
+    try {
+      const { error: deleteError } = await supabase
+        .from('simulations')
+        .delete()
+        .eq('userId', userId);
+
+      if (deleteError) throw deleteError;
+
+      setSimulations([]);
+    } catch (err) {
+      console.error('Error clearing history:', err);
+      setError('Failed to clear history');
+    }
+  };
+
   const deleteSimulation = async (id) => {
     if (!confirm('Are you sure you want to delete this prediction?')) return;
 
@@ -150,7 +168,9 @@ export default function AIInsightsPage() {
         food: h.foodQuality,
         spending: h.spending,
         screen: h.screenTime,
-        social: h.socialCount
+        social: h.socialCount,
+        relationshipTime: h.qualityTime,
+        connectionQuality: h.connectionQuality
       }));
 
       const prompt = `You are a personal development AI coach analyzing habit tracking data.
@@ -175,11 +195,16 @@ Respond ONLY with a valid JSON object in this exact format:
 
 Be encouraging but honest. Focus on the specific domain. Do not use markdown.`;
 
+      const apiKey = process.env.NEXT_PUBLIC_OPENROUTER_API_KEY;
+      if (!apiKey) {
+        throw new Error('OpenRouter API Key is missing');
+      }
+
       const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${process.env.NEXT_PUBLIC_OPENROUTER_API_KEY}`,
+          'Authorization': `Bearer ${apiKey}`,
           'HTTP-Referer': typeof window !== 'undefined' ? window.location.origin : 'https://futureyou.app',
           'X-Title': 'FutureYou'
         },
@@ -201,9 +226,18 @@ Be encouraging but honest. Focus on the specific domain. Do not use markdown.`;
       });
 
       if (!response.ok) {
-        const errorData = await response.json();
-        console.error('OpenRouter error:', errorData);
-        throw new Error(errorData.error?.message || 'API request failed');
+        const errorText = await response.text();
+        console.error('OpenRouter error:', response.status, errorText);
+        let errorMessage = `API request failed with status ${response.status}`;
+        try {
+          const errorJson = JSON.parse(errorText);
+          if (errorJson.error?.message) {
+            errorMessage = errorJson.error.message;
+          }
+        } catch (e) {
+          // response was not JSON
+        }
+        throw new Error(errorMessage);
       }
 
       const data = await response.json();
@@ -228,21 +262,7 @@ Be encouraging but honest. Focus on the specific domain. Do not use markdown.`;
       };
     } catch (error) {
       console.error('AI generation error:', error);
-
-      // Fallback response
-      return {
-        trend: 'stable',
-        prediction: 'Unable to generate detailed AI insights at this moment.',
-        futureOutcome: 'Continue tracking your habits consistently to build a better data history.',
-        suggestions: [
-          'Log your habits daily for at least 7 days',
-          'Try to be consistent with your logging time',
-          'Review your progress weekly'
-        ],
-        dataPoints: habits.length,
-        lastUpdated: new Date().toISOString(),
-        error: error.message
-      };
+      throw error; // Re-throw to be handled by generateInsights
     }
   };
 
@@ -292,11 +312,11 @@ Be encouraging but honest. Focus on the specific domain. Do not use markdown.`;
           </div>
 
           <button
-            onClick={() => fetchSimulations(userId)}
-            className="self-start md:self-center px-4 py-2 bg-white border border-gray-200 rounded-xl hover:bg-gray-50 transition-colors flex items-center gap-2 text-sm font-medium text-gray-700 shadow-sm"
+            onClick={clearHistory}
+            className="self-start md:self-center px-4 py-2 bg-white border border-red-200 text-red-600 rounded-xl hover:bg-red-50 transition-colors flex items-center gap-2 text-sm font-medium shadow-sm"
           >
-            <RefreshCw className="w-4 h-4" />
-            Refresh History
+            <Trash2 className="w-4 h-4" />
+            Clear History
           </button>
         </div>
 
@@ -327,8 +347,8 @@ Be encouraging but honest. Focus on the specific domain. Do not use markdown.`;
                   }}
                   disabled={generating}
                   className={`relative p-4 rounded-xl border-2 transition-all duration-200 flex flex-col items-center gap-2 hover:-translate-y-1 hover:shadow-md ${isSelected
-                      ? 'border-purple-500 bg-purple-50'
-                      : 'border-gray-100 bg-white hover:border-purple-200'
+                    ? 'border-purple-500 bg-purple-50'
+                    : 'border-gray-100 bg-white hover:border-purple-200'
                     } ${generating ? 'opacity-50 cursor-not-allowed' : ''}`}
                 >
                   <span className="text-3xl">{domain.icon}</span>
