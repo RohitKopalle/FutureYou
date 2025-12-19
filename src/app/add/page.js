@@ -237,6 +237,12 @@ export default function AddLogPage() {
       if (todayError) throw todayError;
 
       const hasLoggedToday = todayLogs && todayLogs.length > 0;
+      
+      if (hasLoggedToday) {
+        setError('You have already logged your activity for today. Come back tomorrow!');
+        setLoading(false);
+        return;
+      }
 
       // Insert the new log
       const { error: habitError } = await supabase.from('habits').insert(habitData);
@@ -693,4 +699,5 @@ export default function AddLogPage() {
     </main>
   );
 }
+
 
