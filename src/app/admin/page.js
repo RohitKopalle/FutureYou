@@ -429,7 +429,7 @@ Be encouraging but honest. Focus on the specific domain. Do not use markdown.`;
                       </div>
 
                       <div>
-                        <h4 className="text-sm font-bold text-gray-900 uppercase tracking-wider mb-1 opacity-70">Future Outlook (30 Days)</h4>
+                        <h4 className="text-sm font-bold text-gray-900 uppercase tracking-wider mb-1 opacity-70">Future Outlook</h4>
                         <p className="text-gray-600 text-sm leading-relaxed">
                           {projection.futureOutcome}
                         </p>
@@ -467,3 +467,4 @@ Be encouraging but honest. Focus on the specific domain. Do not use markdown.`;
     </main>
   );
 }
+
