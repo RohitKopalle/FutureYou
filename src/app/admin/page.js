@@ -209,7 +209,7 @@ Be encouraging but honest. Focus on the specific domain. Do not use markdown.`;
           'X-Title': 'FutureYou'
         },
         body: JSON.stringify({
-          model: 'mistralai/mistral-7b-instruct:free',
+          model: 'arcee-ai/trinity-large-preview:free',
           messages: [
             {
               role: 'system',
@@ -258,7 +258,7 @@ Be encouraging but honest. Focus on the specific domain. Do not use markdown.`;
         ...predictions,
         dataPoints: habits.length,
         lastUpdated: new Date().toISOString(),
-        generatedBy: 'AI (Mistral 7B)'
+        generatedBy: 'AI'
       };
     } catch (error) {
       console.error('AI generation error:', error);
